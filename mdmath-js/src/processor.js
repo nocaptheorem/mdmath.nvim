@@ -186,7 +186,7 @@ function main() {
     });
 
     mathjax.init({
-        loader: { load: ['input/tex', 'output/svg'] },
+        loader: { load: ['input/tex-full', 'output/svg'] },
         tex: {
             formatError: (_, err) => {
                 throw new MathError(err.message);
