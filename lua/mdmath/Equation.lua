@@ -151,7 +151,7 @@ function Equation:_init(bufnr, row, col, text, opts)
     self.equation = text:gsub('^%s*%$*(.-)%$*%s*$', '%1')
 
     -- \text is empirically unreliable.
-    self.equation = self.equation:gsub('\\text(%s*{)', '\\mathrm%1')
+    self.equation = self.equation:gsub('\\text', '\\mathrm')
 
     local cell_width, cell_height = terminfo.cell_size()
 
