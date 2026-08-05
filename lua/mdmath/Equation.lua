@@ -84,6 +84,11 @@ function Equation:_create(res, err)
         local text = image:text()[1]
         local color = image:color()
 
+        local padding = self.width - width
+        if padding > 0 then
+            text = text .. (' '):rep(padding)
+        end
+
         vim.schedule(function()
             if self.valid then
                 self.mark_id = marks.add(self.bufnr, self.pos[1], self.pos[2], {
