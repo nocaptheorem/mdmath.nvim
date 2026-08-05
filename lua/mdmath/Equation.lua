@@ -150,6 +150,9 @@ function Equation:_init(bufnr, row, col, text, opts)
     -- remove trailing '$'
     self.equation = text:gsub('^%s*%$*(.-)%$*%s*$', '%1')
 
+    -- \text is empirically unreliable.
+    self.equation = self.equation:gsub('\\text(%s*{)', '\\mathrm%1')
+
     local cell_width, cell_height = terminfo.cell_size()
 
     local flags, height
