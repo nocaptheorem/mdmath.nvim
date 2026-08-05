@@ -120,10 +120,19 @@ function Buffer:parse(start_row, end_row)
     local parser = self.parser
     parser:parse({start_row, end_row})
 
+    -- FIX: Almost sure we can move this block to initialization
+    local inline_lang = 'markdown_inline'
+    local inlines = parser:children()[inline_lang]
+    if not inlines then
+        return nil
+    end
+    local query = vim.treesitter.query.parse(inline_lang, '(latex_block) @block')
+
     local old_equations = self.equations
     local equations = {}
 
     local function process_equation(sr, sc, er, ec, text)
+        -- FIXME: Iterating over all equations is not efficient, we can use a hash table
         local equation = nil
         for key, eq in ipairs(old_equations) do
             if eq ~= 0 and eq.valid and eq.pos[1] == sr and eq.pos[2] == sc and eq.text == text then
@@ -132,50 +141,31 @@ function Buffer:parse(start_row, end_row)
                 break
             end
         end
-        equation = equation or require('mdmath.Equation').new(bufnr, sr, sc, text)
+
+        equation = equation or Equation.new(bufnr, sr, sc, text)
         if equation then
             table.insert(equations, equation)
         end
     end
 
-    -- 1. Parse standard inline $$...$$ blocks
-    local inline_lang = 'markdown_inline'
-    local inlines = parser:children()[inline_lang]
-    if inlines then
-        local query_inline = vim.treesitter.query.parse(inline_lang, '(latex_block) @block')
-        inlines:for_each_tree(function(tree)
-            local root = tree:root()
-            for _, node in query_inline:iter_captures(root, 0, start_row, end_row) do
-                local sr, sc, er, ec = node:range()
-                local value = vim.treesitter.get_node_text(node, 0)
-                process_equation(sr, sc, er, ec, value)
-            end
-        end)
-    end
+    local function get_queries(tree)
+        local root = tree:root()
 
-    -- 2. Parse block-level ```math ... ``` fences
-    local query_block = vim.treesitter.query.parse('markdown', [[
-        (fenced_code_block
-            (info_string (language) @lang)
-            (code_fence_content) @block
-            (#match? @lang "^(math|latex)$"))
-    ]])
-
-    local root = parser:parse()[1]:root()
-    for id, node in query_block:iter_captures(root, 0, start_row, end_row) do
-        if query_block.captures[id] == "block" then
+        for _, node in query:iter_captures(root, 0, start_row, end_row) do
             local sr, sc, er, ec = node:range()
-            local value = vim.treesitter.get_node_text(node, 0)
+            local value = ts.get_node_text(node, 0)
+
             process_equation(sr, sc, er, ec, value)
         end
     end
+    inlines:for_each_tree(get_queries)
 
-    -- Cleanup invalidated equations
     for _, eq in ipairs(old_equations) do
         if eq ~= 0 and eq.valid then
             if (not eq.pos[1] or (start_row <= eq.pos[1] and eq.pos[1] < end_row)) then
                 eq:invalidate()
             else
+                -- add equations out of the range
                 table.insert(equations, eq)
             end
         end
