@@ -143,7 +143,7 @@ function Equation:_init(bufnr, row, col, text, opts)
     self.color = color
 
     -- remove trailing '$'
-    self.equation = text:gsub('^%$*(.-)%$*$', '%1')
+    self.equation = text:gsub('^%s*%$*(.-)%$*%s*$', '%1')
 
     local cell_width, cell_height = terminfo.cell_size()
 
